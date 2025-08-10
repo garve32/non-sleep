@@ -44,6 +44,17 @@ export default function Page() {
     })();
   }, []);
 
+  // load initial logs from server
+  useEffect(() => {
+    (async () => {
+      const res = await fetch("/api/logs?limit=30", { cache: "no-store" });
+      const data = await res.json();
+      if (data?.ok && Array.isArray(data.data)) {
+        setLogs(data.data.map((d: any) => ({ ...d, startedAt: new Date(d.startedAt).getTime() })));
+      }
+    })();
+  }, []);
+
   const timers = useRef<Map<string, number>>(new Map());
 
   const runOnce = async (config: RequestConfig) => {
@@ -68,8 +79,7 @@ export default function Page() {
 
   const startTimer = (config: RequestConfig) => {
     if (timers.current.has(config.id)) return;
-    // fire immediately then interval
-    runOnce(config);
+    // 주기적 실행만 설정. 즉시 실행하지 않음.
     const handle = window.setInterval(() => runOnce(config), Math.max(10_000, config.intervalMs));
     timers.current.set(config.id, handle);
   };

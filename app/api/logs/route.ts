@@ -1,54 +1,56 @@
+import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const configId = searchParams.get("configId");
-    const limit = Number(searchParams.get("limit") || 200);
-    if (Number.isNaN(limit) || limit <= 0) {
-      return Response.json({ ok: false, error: "invalid limit" }, { status: 400 });
-    }
-    let rows: any[] = [];
+    const limit = parseInt(searchParams.get("limit") || "30");
+
     if (configId) {
-      rows = await sql`
-        select log_id as "logId", config_id as "configId", started_at as "startedAt",
-               duration_ms as "durationMs", status, ok, error
+      const rows = await sql`
+        select config_id as "configId", started_at as "startedAt", duration_ms as "durationMs", status, ok, error
         from logs
         where config_id = ${configId}
         order by started_at desc
         limit ${limit}
       `;
+      return NextResponse.json({ ok: true, data: rows });
     } else {
-      rows = await sql`
-        select log_id as "logId", config_id as "configId", started_at as "startedAt",
-               duration_ms as "durationMs", status, ok, error
+      const rows = await sql`
+        select config_id as "configId", started_at as "startedAt", duration_ms as "durationMs", status, ok, error
         from logs
         order by started_at desc
         limit ${limit}
       `;
+      return NextResponse.json({ ok: true, data: rows });
     }
-    return Response.json({ ok: true, data: rows });
-  } catch (e: any) {
-    return Response.json({ ok: false, error: e?.message || "get logs failed" }, { status: 500 });
+  } catch (error: any) {
+    console.error("GET /api/logs error:", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
-    const { configId, startedAt, durationMs, status, ok, error } = body || {};
-    if (!configId || !startedAt || typeof durationMs !== "number" || typeof ok !== "boolean") {
-      return Response.json({ ok: false, error: "missing fields" }, { status: 400 });
+    const body = await request.json();
+    const { configId, startedAt, durationMs, status, ok, error } = body;
+
+    if (!configId || !startedAt || durationMs === undefined) {
+      return NextResponse.json({ ok: false, error: "필수 필드가 누락되었습니다" }, { status: 400 });
     }
+
     await sql`
       insert into logs (config_id, started_at, duration_ms, status, ok, error)
-      values (${configId}, to_timestamp(${startedAt}/1000.0), ${durationMs}, ${status}, ${ok}, ${error})
+      values (${configId}, ${new Date(startedAt).toISOString()}, ${durationMs}, ${status}, ${!!ok}, ${error || null})
     `;
-    return Response.json({ ok: true });
-  } catch (e: any) {
-    return Response.json({ ok: false, error: e?.message || "insert log failed" }, { status: 500 });
+
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    console.error("POST /api/logs error:", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RequestConfig, RunLog } from "@/lib/types";
 import { Badge, Btn, Card, Input, Label, SectionTitle, Select, Sparkline } from "@/app/components/UI";
 
@@ -12,7 +12,7 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const timers = useRef<number | null>(null);
+  const [formDataOrder, setFormDataOrder] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -22,6 +22,8 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
         if (data?.ok && data?.data) {
           setSavedConfig(data.data as RequestConfig);
           setDraft(data.data as RequestConfig);
+          // 기존 formData의 키들을 순서 배열에 추가
+          setFormDataOrder(Object.keys(data.data.formData || {}));
         } else {
           setError(data?.error || "설정을 불러오지 못했습니다");
         }
@@ -66,12 +68,6 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
     }
   };
 
-  const revertChanges = () => {
-    setDraft(savedConfig);
-    setMessage(null);
-    setError(null);
-  };
-
   const deleteTask = async () => {
     if (!draft) return;
     if (!confirm("정말 삭제하시겠습니까? (관련 로그도 모두 삭제)")) return;
@@ -102,19 +98,6 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
       setLogs((prev) => [{ configId: draft!.id, startedAt, durationMs, status: null, ok: false, error: e?.message || "error" }, ...prev].slice(0, 400));
     }
   };
-
-  useEffect(() => {
-    if (!savedConfig) return;
-    if (savedConfig.enabled) {
-      // 주기 실행만 설정. 진입 시 즉시 실행하지 않음.
-      timers.current = window.setInterval(() => runOnce(), Math.max(10_000, savedConfig.intervalMs));
-    }
-    return () => {
-      if (timers.current) window.clearInterval(timers.current);
-      timers.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedConfig?.enabled, savedConfig?.intervalMs, savedConfig?.url]);
 
   const formatMs = (ms: number) => `${ms} ms`;
 
@@ -155,32 +138,43 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <strong>Form Data</strong>
               <Btn small onClick={() => {
-                const key = prompt("파라미터 키?")?.trim();
-                if (!key) return;
-                setDraft({ ...draft, formData: { ...draft.formData, [key]: "" } });
+                const newKey = `param${Object.keys(draft.formData).length + 1}`;
+                setDraft({ ...draft, formData: { ...draft.formData, [newKey]: "" } });
+                setFormDataOrder([...formDataOrder, newKey]);
               }}>+ 필드</Btn>
             </div>
             <div className="form-data-grid">
-              {Object.entries(draft.formData).map(([k, v]) => (
-                <div key={k} className="form-data-row">
-                  <Input
-                    value={k}
-                    onChange={(e) => {
-                      const newKey = e.target.value;
-                      const { [k]: oldValue, ...rest } = draft.formData;
-                      setDraft({ ...draft, formData: { ...rest, [newKey]: oldValue } });
-                    }}
-                    placeholder="키"
-                  />
-                  <Input
-                    value={v}
-                    onChange={(e) => setDraft({ ...draft, formData: { ...draft.formData, [k]: e.target.value } })}
-                    type={k.toLowerCase().includes("password") ? "password" : "text"}
-                    placeholder="값"
-                  />
-                  <Btn small variant="danger" onClick={() => { const { [k]: _omit, ...rest } = draft.formData; setDraft({ ...draft, formData: rest }); }}>삭제</Btn>
-                </div>
-              ))}
+              {formDataOrder.map((key) => {
+                const value = draft.formData[key];
+                if (value === undefined) return null; // 삭제된 키는 건너뛰기
+                
+                return (
+                  <div key={key} className="form-data-row">
+                    <Input
+                      value={key}
+                      onChange={(e) => {
+                        const newKey = e.target.value;
+                        const { [key]: oldValue, ...rest } = draft.formData;
+                        setDraft({ ...draft, formData: { ...rest, [newKey]: oldValue } });
+                        // 순서 배열도 업데이트
+                        setFormDataOrder(formDataOrder.map(k => k === key ? newKey : k));
+                      }}
+                      placeholder="키"
+                    />
+                    <Input
+                      value={value}
+                      onChange={(e) => setDraft({ ...draft, formData: { ...draft.formData, [key]: e.target.value } })}
+                      placeholder="값"
+                    />
+                    <Btn small variant="danger" onClick={() => { 
+                      const { [key]: _omit, ...rest } = draft.formData; 
+                      setDraft({ ...draft, formData: rest });
+                      // 순서 배열에서도 제거
+                      setFormDataOrder(formDataOrder.filter(k => k !== key));
+                    }}>삭제</Btn>
+                  </div>
+                );
+              })}
             </div>
           </div>
           <div className="action-buttons">

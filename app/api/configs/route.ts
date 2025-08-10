@@ -1,11 +1,14 @@
+import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { monitorScheduler } from "@/lib/scheduler";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+
     if (id) {
       const rows = await sql`
         select id, name, url, method, interval_ms as "intervalMs", form_data as "formData", enabled
@@ -13,56 +16,89 @@ export async function GET(req: Request) {
         where id = ${id}
         limit 1
       `;
-      return Response.json({ ok: true, data: rows[0] || null });
+      return NextResponse.json({ ok: true, data: rows[0] || null });
     } else {
       const rows = await sql`
         select id, name, url, method, interval_ms as "intervalMs", form_data as "formData", enabled
         from configs
         order by created_at asc
       `;
-      return Response.json({ ok: true, data: rows });
+      return NextResponse.json({ ok: true, data: rows });
     }
-  } catch (e: any) {
-    return Response.json({ ok: false, error: e?.message || "get failed" }, { status: 500 });
+  } catch (error: any) {
+    console.error("GET /api/configs error:", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
-    const { id, name, url, method, intervalMs, formData, enabled } = body || {};
-    if (!id || !name || !url || !method || !intervalMs) {
-      return Response.json({ ok: false, error: "missing fields" }, { status: 400 });
+    const body = await request.json();
+    const { id, name, url, method, intervalMs, formData, enabled } = body;
+
+    if (!name || !url || !method || !intervalMs) {
+      return NextResponse.json({ ok: false, error: "필수 필드가 누락되었습니다" }, { status: 400 });
     }
-    await sql`
-      insert into configs (id, name, url, method, interval_ms, form_data, enabled)
-      values (${id}, ${name}, ${url}, ${method}, ${intervalMs}, ${JSON.stringify(formData||{})}::jsonb, ${!!enabled})
-      on conflict (id) do update set
-        name = excluded.name,
-        url = excluded.url,
-        method = excluded.method,
-        interval_ms = excluded.interval_ms,
-        form_data = excluded.form_data,
-        enabled = excluded.enabled,
-        updated_at = now()
-    `;
-    return Response.json({ ok: true });
-  } catch (e: any) {
-    return Response.json({ ok: false, error: e?.message || "upsert failed" }, { status: 500 });
+
+    if (id) {
+      // 기존 설정 업데이트
+      await sql`
+        update configs set 
+          name = ${name}, 
+          url = ${url}, 
+          method = ${method}, 
+          interval_ms = ${intervalMs}, 
+          form_data = ${JSON.stringify(formData || {})}::jsonb, 
+          enabled = ${!!enabled}, 
+          updated_at = now()
+        where id = ${id}
+      `;
+
+      // 스케줄러 업데이트
+      const updatedConfig = { id, name, url, method, intervalMs, formData: formData || {}, enabled: !!enabled };
+      monitorScheduler.scheduleMonitor(updatedConfig);
+
+      return NextResponse.json({ ok: true, data: { id } });
+    } else {
+      // 새 설정 생성
+      const newId = crypto.randomUUID();
+      await sql`
+        insert into configs (id, name, url, method, interval_ms, form_data, enabled)
+        values (${newId}, ${name}, ${url}, ${method}, ${intervalMs}, ${JSON.stringify(formData || {})}::jsonb, ${!!enabled})
+      `;
+
+      // 스케줄러에 추가
+      const newConfig = { id: newId, name, url, method, intervalMs, formData: formData || {}, enabled: !!enabled };
+      monitorScheduler.scheduleMonitor(newConfig);
+
+      return NextResponse.json({ ok: true, data: { id: newId } });
+    }
+  } catch (error: any) {
+    console.error("POST /api/configs error:", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    if (!id) return Response.json({ ok: false, error: "id required" }, { status: 400 });
-    // delete logs first, then config
+
+    if (!id) {
+      return NextResponse.json({ ok: false, error: "ID가 필요합니다" }, { status: 400 });
+    }
+
+    // 스케줄러에서 제거
+    monitorScheduler.stopMonitor(id);
+
+    // 데이터베이스에서 삭제
     await sql`delete from logs where config_id = ${id}`;
     await sql`delete from configs where id = ${id}`;
-    return Response.json({ ok: true });
-  } catch (e: any) {
-    return Response.json({ ok: false, error: e?.message || "delete failed" }, { status: 500 });
+
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    console.error("DELETE /api/configs error:", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
 

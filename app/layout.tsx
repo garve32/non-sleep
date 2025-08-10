@@ -1,28 +1,36 @@
+import type { Metadata } from "next";
 import "./globals.css";
-export const metadata = {
-  title: "Non Sleep",
-  description: "Lightweight HTTP pinger"
+
+export const metadata: Metadata = {
+  title: "Non-Sleep Monitor",
+  description: "HTTP monitoring tool",
 };
 
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1
-};
+// 서버 시작시 스케줄러 초기화
+if (typeof window === 'undefined') {
+  // 서버 사이드에서만 실행
+  console.log('Server starting - initializing scheduler...');
+  
+  // 약간의 지연 후 스케줄러 초기화
+  setTimeout(async () => {
+    try {
+      const { initializeScheduler } = await import('@/lib/scheduler');
+      await initializeScheduler();
+      console.log('Scheduler initialization completed');
+    } catch (error) {
+      console.error('Failed to initialize scheduler:', error);
+    }
+  }, 3000);
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="ko">
-      <body
-        style={{
-          fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial',
-          margin: 0,
-          background: '#0b0d10',
-          color: '#e6e8eb'
-        }}
-      >
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
