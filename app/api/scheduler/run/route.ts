@@ -67,7 +67,13 @@ async function executeScheduler(request: NextRequest, params: any) {
       if (taskStatus?.nextRunAt) {
         const timeDiff = taskStatus.nextRunAt.getTime() - now.getTime();
         const minutesDiff = Math.floor(timeDiff / (1000 * 60));
-        console.log(`Monitor ${config.name} (${config.id}): nextRunAt=${taskStatus.nextRunAt.toISOString()}, now=${now.toISOString()}, diff=${minutesDiff}min`);
+        const secondsDiff = Math.floor((timeDiff % (1000 * 60)) / 1000);
+        
+        console.log(`Monitor ${config.name} (${config.id}):`);
+        console.log(`  - Current time (UTC): ${now.toISOString()}`);
+        console.log(`  - Next run time (UTC): ${taskStatus.nextRunAt.toISOString()}`);
+        console.log(`  - Time difference: ${minutesDiff}min ${secondsDiff}s`);
+        console.log(`  - Should run: ${shouldRun}`);
       }
       
       if (shouldRun) {

@@ -93,9 +93,16 @@ class MonitorScheduler {
 
     // 작업 정보 업데이트
     if (task) {
-      task.lastRunAt = new Date();
-      task.nextRunAt = new Date(Date.now() + config.intervalMs);
-      console.log(`Updated task info for ${config.name}: next run at ${task.nextRunAt.toISOString()}`);
+      const now = new Date();
+      const nextRun = new Date(now.getTime() + config.intervalMs);
+      
+      task.lastRunAt = now;
+      task.nextRunAt = nextRun;
+      
+      console.log(`Updated task info for ${config.name}:`);
+      console.log(`  - Current time (UTC): ${now.toISOString()}`);
+      console.log(`  - Next run time (UTC): ${nextRun.toISOString()}`);
+      console.log(`  - Interval: ${config.intervalMs}ms (${Math.round(config.intervalMs / 60000)} minutes)`);
     }
   }
 
@@ -129,15 +136,16 @@ class MonitorScheduler {
     const intervalMs = Math.max(10000, config.intervalMs);
 
     // 작업 정보 저장 (실제 실행은 외부에서 처리)
+    // nextRunAt을 현재 시간으로 설정하여 즉시 실행되도록 함
     this.tasks.set(config.id, {
       id: config.id,
       config,
       lastRunAt: undefined,
-      nextRunAt: new Date(Date.now() + intervalMs),
+      nextRunAt: new Date(), // 현재 시간으로 설정하여 즉시 실행
       isRunning: false,
     });
 
-    console.log(`Scheduled monitor ${config.name} (${config.id}) with interval ${intervalMs}ms`);
+    console.log(`Scheduled monitor ${config.name} (${config.id}) with interval ${intervalMs}ms, nextRunAt: ${new Date().toISOString()}`);
   }
 
   // 모니터링 작업 중지
