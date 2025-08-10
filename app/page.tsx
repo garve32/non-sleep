@@ -55,34 +55,7 @@ export default function Page() {
     })();
   }, []);
 
-  // 스케줄러 상태 확인 및 초기화
-  useEffect(() => {
-    (async () => {
-      try {
-        // 스케줄러 상태 확인
-        const statusRes = await fetch("/api/scheduler/status", { cache: "no-store" });
-        const statusData = await statusRes.json();
-        
-        // 스케줄러가 초기화되지 않은 경우 자동 초기화
-        if (statusData?.ok && !statusData.data.isInitialized) {
-          console.log('Scheduler not initialized, attempting to initialize...');
-          const initRes = await fetch("/api/scheduler/init", { 
-            method: "POST",
-            cache: "no-store" 
-          });
-          const initData = await initRes.json();
-          
-          if (initData?.ok) {
-            console.log('Scheduler initialized successfully');
-          } else {
-            console.error('Failed to initialize scheduler:', initData?.error);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking/initializing scheduler:', error);
-      }
-    })();
-  }, []);
+
 
   const timers = useRef<Map<string, number>>(new Map());
 

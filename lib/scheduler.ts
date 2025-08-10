@@ -1,14 +1,12 @@
-import * as cron from 'node-cron';
 import type { RequestConfig } from './types';
 import { sql } from './db';
 
 interface ScheduledTask {
   id: string;
-  task: cron.ScheduledTask;
   config: RequestConfig;
   lastRunAt?: Date;
   nextRunAt?: Date;
-  isRunning?: boolean; // 실행 중인지 추적
+  isRunning?: boolean;
 }
 
 class MonitorScheduler {
@@ -17,7 +15,7 @@ class MonitorScheduler {
   public initializationPromise: Promise<void> | null = null;
 
   // 모니터링 작업 실행 함수
-  private async executeMonitor(config: RequestConfig): Promise<void> {
+  public async executeMonitor(config: RequestConfig): Promise<void> {
     const task = this.tasks.get(config.id);
     if (!task) {
       console.log(`Task ${config.id} not found, skipping execution`);
@@ -118,7 +116,7 @@ class MonitorScheduler {
     }
   }
 
-  // 모니터링 작업 추가/업데이트
+  // 모니터링 작업 추가/업데이트 (메모리에만 저장)
   public scheduleMonitor(config: RequestConfig): void {
     // 기존 작업이 있다면 제거
     this.stopMonitor(config.id);
@@ -129,23 +127,10 @@ class MonitorScheduler {
 
     // 최소 간격 10초 보장
     const intervalMs = Math.max(10000, config.intervalMs);
-    
-    // cron 표현식 생성 (초 단위로 변환)
-    const intervalSeconds = Math.floor(intervalMs / 1000);
-    const cronExpression = `*/${intervalSeconds} * * * * *`;
 
-    // 스케줄된 작업 생성
-    const task = cron.schedule(cronExpression, () => {
-      this.executeMonitor(config);
-    });
-
-    // 작업 시작
-    task.start();
-
-    // 작업 정보 저장
+    // 작업 정보 저장 (실제 실행은 외부에서 처리)
     this.tasks.set(config.id, {
       id: config.id,
-      task,
       config,
       lastRunAt: undefined,
       nextRunAt: new Date(Date.now() + intervalMs),
@@ -159,8 +144,6 @@ class MonitorScheduler {
   public stopMonitor(id: string): void {
     const scheduledTask = this.tasks.get(id);
     if (scheduledTask) {
-      scheduledTask.task.stop();
-      scheduledTask.task.destroy();
       this.tasks.delete(id);
       console.log(`Stopped monitor ${id}`);
     }
@@ -168,10 +151,6 @@ class MonitorScheduler {
 
   // 모든 모니터링 작업 중지
   public stopAllMonitors(): void {
-    this.tasks.forEach((scheduledTask) => {
-      scheduledTask.task.stop();
-      scheduledTask.task.destroy();
-    });
     this.tasks.clear();
     console.log('Stopped all monitors');
   }
