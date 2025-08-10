@@ -1,0 +1,9 @@
+Set up environment variables
+
+- Create a file named `.env.local` in the project root with the content below.
+
+DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DB?sslmode=require
+
+Notes
+- Use Neon provided connection string (Serverless driver). Enable SSL.
+- On Vercel, add the same `DATABASE_URL` in Project Settings → Environment Variables.
