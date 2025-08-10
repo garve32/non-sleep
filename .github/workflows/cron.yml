@@ -1,0 +1,25 @@
+name: Monitor Cron
+on:
+  schedule:
+    - cron: '*/1 * * * *'  # 매분 실행
+  workflow_dispatch:  # 수동 실행도 가능
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Monitor API with POST
+        run: |
+          curl -X POST https://non-sleep.vercel.app/api/scheduler/run \
+            -H "Content-Type: application/json" \
+            -d '{
+              "source": "github-actions",
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "environment": "production",
+              "trigger": "scheduled"
+            }'
+        env:
+          # GitHub Actions에서 제공하는 환경변수들
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}

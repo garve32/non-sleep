@@ -5,10 +5,26 @@ import type { RequestConfig } from '@/lib/types';
 
 export const runtime = 'edge';
 
-// 주기적 실행을 위한 핸들러
+// 주기적 실행을 위한 핸들러 (GET과 POST 모두 지원)
 export async function GET(request: NextRequest) {
+  return await executeScheduler(request, {});
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    return await executeScheduler(request, body);
+  } catch (error) {
+    // JSON 파싱 실패시 빈 객체로 처리
+    return await executeScheduler(request, {});
+  }
+}
+
+async function executeScheduler(request: NextRequest, params: any) {
   try {
     console.log('Scheduler run API called at:', new Date().toISOString());
+    console.log('Request method:', request.method);
+    console.log('Parameters:', params);
     
     // 활성화된 모든 설정 가져오기
     const configs = await sql`
@@ -78,7 +94,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       ok: true, 
       message: `Executed ${successful} monitors, ${failed} failed, ${skipped} skipped`,
-      results
+      results,
+      params: params  // 받은 파라미터도 응답에 포함
     });
     
   } catch (error: any) {
