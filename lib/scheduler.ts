@@ -12,6 +12,8 @@ interface ScheduledTask {
 
 class MonitorScheduler {
   private tasks: Map<string, ScheduledTask> = new Map();
+  public isInitialized = false;
+  public initializationPromise: Promise<void> | null = null;
 
   // 모니터링 작업 실행 함수
   private async executeMonitor(config: RequestConfig): Promise<void> {
@@ -178,6 +180,17 @@ class MonitorScheduler {
     });
     return status;
   }
+
+  // 초기화 상태 확인
+  public isSchedulerInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  // 초기화 리셋 (테스트용)
+  public resetInitialization(): void {
+    this.isInitialized = false;
+    this.initializationPromise = null;
+  }
 }
 
 // 싱글톤 인스턴스 생성
@@ -185,47 +198,74 @@ export const monitorScheduler = new MonitorScheduler();
 
 // 서버 시작시 모든 활성화된 모니터링 작업 로드
 export async function initializeScheduler(): Promise<void> {
-  try {
-    console.log('Initializing scheduler...');
-    
-    // 서버가 준비될 때까지 잠시 대기
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // 직접 데이터베이스에서 설정 가져오기
-    console.log('Fetching configs from database...');
-    
-    const configs = await sql`
-      select id, name, url, method, interval_ms as "intervalMs", form_data as "formData", enabled
-      from configs
-      where enabled = true
-      order by created_at asc
-    `;
-    
-    console.log('Fetched configs from database:', configs);
-    
-    if (Array.isArray(configs) && configs.length > 0) {
-      console.log(`Found ${configs.length} enabled configs:`, configs.map((c: any) => c.name));
-      
-      configs.forEach((config: any) => {
-        // 데이터베이스 형식을 클라이언트 형식으로 변환
-        const clientConfig: RequestConfig = {
-          id: config.id,
-          name: config.name,
-          url: config.url,
-          method: config.method,
-          intervalMs: config.intervalMs,
-          formData: config.formData || {},
-          enabled: config.enabled
-        };
-        
-        monitorScheduler.scheduleMonitor(clientConfig);
-      });
-      
-      console.log(`Initialized ${configs.length} enabled monitors`);
-    } else {
-      console.log('No enabled configs found in database');
-    }
-  } catch (error) {
-    console.error('Failed to initialize scheduler:', error);
+  // 이미 초기화 중이거나 완료된 경우 중복 실행 방지
+  if (monitorScheduler.isSchedulerInitialized()) {
+    console.log('Scheduler already initialized, skipping...');
+    return;
   }
+
+  if (monitorScheduler.initializationPromise) {
+    console.log('Scheduler initialization already in progress, waiting...');
+    await monitorScheduler.initializationPromise;
+    return;
+  }
+
+  // 초기화 프로미스 생성
+  monitorScheduler.initializationPromise = (async () => {
+    try {
+      console.log('Initializing scheduler...');
+      
+      // 서버가 준비될 때까지 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 직접 데이터베이스에서 설정 가져오기
+      console.log('Fetching configs from database...');
+      
+      const configs = await sql`
+        select id, name, url, method, interval_ms as "intervalMs", form_data as "formData", enabled
+        from configs
+        where enabled = true
+        order by created_at asc
+      `;
+      
+      console.log('Fetched configs from database:', configs);
+      
+      if (Array.isArray(configs) && configs.length > 0) {
+        console.log(`Found ${configs.length} enabled configs:`, configs.map((c: any) => c.name));
+        
+        configs.forEach((config: any) => {
+          // 데이터베이스 형식을 클라이언트 형식으로 변환
+          const clientConfig: RequestConfig = {
+            id: config.id,
+            name: config.name,
+            url: config.url,
+            method: config.method,
+            intervalMs: config.intervalMs,
+            formData: config.formData || {},
+            enabled: config.enabled
+          };
+          
+          monitorScheduler.scheduleMonitor(clientConfig);
+        });
+        
+        console.log(`Initialized ${configs.length} enabled monitors`);
+      } else {
+        console.log('No enabled configs found in database');
+      }
+
+      // 초기화 완료 표시
+      monitorScheduler.isInitialized = true;
+      console.log('Scheduler initialization completed successfully');
+    } catch (error) {
+      console.error('Failed to initialize scheduler:', error);
+      // 초기화 실패시 상태 리셋
+      monitorScheduler.isInitialized = false;
+      throw error;
+    } finally {
+      // 초기화 프로미스 정리
+      monitorScheduler.initializationPromise = null;
+    }
+  })();
+
+  await monitorScheduler.initializationPromise;
 }

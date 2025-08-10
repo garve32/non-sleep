@@ -5,22 +5,23 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const status = monitorScheduler.getAllTaskStatus();
-    const statusArray = Array.from(status.entries()).map(([id, data]) => ({
+    const taskStatus = monitorScheduler.getAllTaskStatus();
+    const activeTasks = Array.from(taskStatus.entries()).map(([id, status]) => ({
       id,
-      lastRunAt: data.lastRunAt?.toISOString(),
-      nextRunAt: data.nextRunAt?.toISOString(),
+      lastRunAt: status.lastRunAt?.toISOString(),
+      nextRunAt: status.nextRunAt?.toISOString(),
     }));
 
-    return NextResponse.json({ 
-      ok: true, 
+    return NextResponse.json({
+      ok: true,
       data: {
-        activeTasks: statusArray,
-        totalTasks: status.size
+        isInitialized: monitorScheduler.isSchedulerInitialized(),
+        activeTasks,
+        totalTasks: activeTasks.length,
       }
     });
   } catch (error: any) {
-    console.error("GET /api/scheduler/status error:", error);
+    console.error("Failed to get scheduler status:", error);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
