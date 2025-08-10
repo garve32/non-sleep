@@ -132,7 +132,12 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
               <option value="GET">GET</option>
             </Select>
             <Label>주기(ms)</Label>
-            <Input type="number" min={10000} value={draft.intervalMs} onChange={(e) => setDraft({ ...draft, intervalMs: Number(e.target.value) })} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Input type="number" min={10000} value={draft.intervalMs} onChange={(e) => setDraft({ ...draft, intervalMs: Number(e.target.value) })} />
+              <span style={{ color: "#9aa4b2", fontSize: 12, whiteSpace: "nowrap" }}>
+                ≈ {Math.round(draft.intervalMs / 60000)}분
+              </span>
+            </div>
           </div>
           <div style={{ marginTop: 8 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

@@ -8,6 +8,7 @@ interface ScheduledTask {
   config: RequestConfig;
   lastRunAt?: Date;
   nextRunAt?: Date;
+  isRunning?: boolean; // 실행 중인지 추적
 }
 
 class MonitorScheduler {
@@ -17,6 +18,21 @@ class MonitorScheduler {
 
   // 모니터링 작업 실행 함수
   private async executeMonitor(config: RequestConfig): Promise<void> {
+    const task = this.tasks.get(config.id);
+    if (!task) {
+      console.log(`Task ${config.id} not found, skipping execution`);
+      return;
+    }
+
+    // 이미 실행 중인 경우 중복 실행 방지
+    if (task.isRunning) {
+      console.log(`Monitor ${config.name} (${config.id}) is already running, skipping duplicate execution`);
+      return;
+    }
+
+    // 실행 중 표시
+    task.isRunning = true;
+    
     console.log(`Executing monitor ${config.name} (${config.id})`);
     const startedAt = Date.now();
     let durationMs = 0;
@@ -72,10 +88,12 @@ class MonitorScheduler {
         ok: false,
         error,
       });
+    } finally {
+      // 실행 완료 표시
+      task.isRunning = false;
     }
 
     // 작업 정보 업데이트
-    const task = this.tasks.get(config.id);
     if (task) {
       task.lastRunAt = new Date();
       task.nextRunAt = new Date(Date.now() + config.intervalMs);
@@ -131,6 +149,7 @@ class MonitorScheduler {
       config,
       lastRunAt: undefined,
       nextRunAt: new Date(Date.now() + intervalMs),
+      isRunning: false,
     });
 
     console.log(`Scheduled monitor ${config.name} (${config.id}) with interval ${intervalMs}ms`);
@@ -181,6 +200,15 @@ class MonitorScheduler {
     return status;
   }
 
+  // 현재 실행 중인 작업 수 확인
+  public getRunningTasksCount(): number {
+    let count = 0;
+    this.tasks.forEach((task) => {
+      if (task.isRunning) count++;
+    });
+    return count;
+  }
+
   // 초기화 상태 확인
   public isSchedulerInitialized(): boolean {
     return this.isInitialized;
@@ -214,6 +242,9 @@ export async function initializeScheduler(): Promise<void> {
   monitorScheduler.initializationPromise = (async () => {
     try {
       console.log('Initializing scheduler...');
+      
+      // 기존 작업들을 모두 정리
+      monitorScheduler.stopAllMonitors();
       
       // 서버가 준비될 때까지 잠시 대기
       await new Promise(resolve => setTimeout(resolve, 2000));

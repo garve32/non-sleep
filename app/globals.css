@@ -54,6 +54,21 @@ body{ margin:0; background:var(--bg); color:var(--text); font-size:12px; overflo
   .form-grid label{ margin-top:0; margin-bottom:0; }
   .form-grid > div[style*="grid-template-columns"]{ grid-template-columns: 1fr; gap:4px; }
   
+  /* 모바일에서 주기 입력 부분 조정 */
+  .form-grid > div[style*="display: flex"]{ 
+    flex-direction: row; 
+    gap: 6px; 
+    align-items: center; 
+  }
+  .form-grid > div[style*="display: flex"] input{ 
+    flex: 1; 
+    min-width: 0; 
+  }
+  .form-grid > div[style*="display: flex"] span{ 
+    font-size: 11px; 
+    white-space: nowrap; 
+  }
+  
   /* 모바일에서 Form Data 입력 폼 사이즈만 조정 */
   .form-data-row{ grid-template-columns: 1fr 1fr auto; gap:4px; }
   .form-data-row input{ min-width:0; font-size:11px; }
