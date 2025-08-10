@@ -212,9 +212,9 @@ export default function Page() {
                     <a href={`/monitor/${c.id}`} style={{ color: "#e6e8eb", textDecoration: "none", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</a>
                   </div>
                   {/* 2행: URL + 메서드 (모바일 전용) */}
-                  <div className="only-mobile" style={{ gap: 8, alignItems: "center", color: "#9aa4b2", fontSize: 12 }}>
+                  <div className="only-mobile" style={{ gap: 6, alignItems: "center", color: "#9aa4b2", fontSize: 12 }}>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{c.url}</span>
-                    <span style={{ fontSize: 12, padding: "2px 6px", borderRadius: 999, background: "#111827", border: "1px solid #1f2937", marginLeft: 6 }}>HTTP, {c.method}</span>
+                    <span className="badge" style={{ fontSize: 12, padding: "2px 6px", borderRadius: 999, background: "#111827", border: "1px solid #1f2937", marginLeft: 4 }}>HTTP, {c.method}</span>
                   </div>
                   {/* 데스크톱에서는 기존 한 줄(제목 옆 URL/HTTP) 유지 */}
                   <div className="only-desktop" style={{ gap: 8, alignItems: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

@@ -13,9 +13,9 @@ const colors = {
   danger: "#ef4444"
 };
 
-export function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+export function Card({ children, style, className }: { children: ReactNode; style?: CSSProperties; className?: string }) {
   return (
-    <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16, ...style }}>{children}</div>
+    <div className={className} style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16, ...style }}>{children}</div>
   );
 }
 

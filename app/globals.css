@@ -8,11 +8,12 @@
 }
 
 *{ box-sizing: border-box; }
-body{ margin:0; background:var(--bg); color:var(--text); font-size:12px; }
-.container{ max-width: 1100px; margin: 0 auto; }
+body{ margin:0; background:var(--bg); color:var(--text); font-size:12px; overflow-x:hidden; }
+.container{ max-width: 1100px; margin: 0 auto; padding-left: 12px; padding-right: 12px; }
 .small-text{ font-size:12px; }
 .hide-scroll{ scrollbar-width: none; -ms-overflow-style: none; }
 .hide-scroll::-webkit-scrollbar{ display:none; }
+.badge{ white-space:nowrap; }
 
 .page-header{ padding:16px; border-bottom:1px solid var(--border); }
 
@@ -26,6 +27,17 @@ body{ margin:0; background:var(--bg); color:var(--text); font-size:12px; }
 .icon-btn.danger{ color:#ef4444; }
 .icon-btn .label{ display:none; }
 
+/* 새로운 반응형 클래스들 */
+.form-grid{ display:grid; grid-template-columns: 80px 1fr; gap:4px; min-width:0; }
+.form-data-grid{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+.form-data-row{ display:grid; grid-template-columns: 1fr 1fr auto; gap:6px; }
+.action-buttons{ margin-top:12px; display:flex; gap:8px; align-items:center; justify-content:space-between; }
+.button-group{ display:flex; gap:8px; flex-wrap:wrap; }
+.stats-grid{ display:flex; gap:12px; margin-bottom:12px; color:#9aa4b2; font-size:12px; }
+.log-row{ display:grid; grid-template-columns: minmax(0,1fr) auto auto; gap:6px; }
+.log-time{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.log-duration{ white-space:nowrap; }
+
 @media (max-width: 768px){
   .page-header{ padding:12px; }
   .detail-grid{ grid-template-columns: 1fr; }
@@ -36,8 +48,34 @@ body{ margin:0; background:var(--bg); color:var(--text); font-size:12px; }
   .only-mobile{ display: flex; }
   .icon-btn{ width:auto; height:28px; padding:4px 10px; }
   .icon-btn .label{ display:inline; margin-left:4px; }
-  /* 상세 화면 삭제 버튼이 줄바꿈되지 않도록 */
-  .btn-fixed { white-space: nowrap; }
+  
+  /* 모바일에서 폼 그리드 가로 배치 유지 */
+  .form-grid{ grid-template-columns: 80px 1fr; gap:4px; }
+  .form-grid label{ margin-top:0; margin-bottom:0; }
+  .form-grid > div[style*="grid-template-columns"]{ grid-template-columns: 1fr; gap:4px; }
+  
+  /* 모바일에서 Form Data 입력 폼 사이즈만 조정 */
+  .form-data-row{ grid-template-columns: 1fr 1fr auto; gap:4px; }
+  .form-data-row input{ min-width:0; font-size:11px; }
+  .form-data-row button{ font-size:11px; padding:4px 8px; }
+  
+  /* 모바일에서 액션 버튼들 한 줄 배치 */
+  .action-buttons{ flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap; }
+  .button-group{ flex-direction:row; flex-wrap:wrap; }
+  .button-group button{ flex:1; min-width:60px; font-size:11px; padding:6px 8px; }
+  
+  /* 모바일에서 통계 정보 가로 배치 유지 */
+  .stats-grid{ flex-direction:row; gap:8px; }
+  
+  /* 모바일에서 로그 행 가로 배치 유지 */
+  .log-row{ grid-template-columns: minmax(0,1fr) auto auto; gap:6px; }
+  .log-time{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  
+  /* 작은 화면 카드 섹션 너비 축소 */
+  .card-narrow { padding:12px; }
 }
+
+/* 극소형 기기 추가 안전 여백 */
+/* (사용자 요청으로 500px 미디어쿼리 제거) */
 
 

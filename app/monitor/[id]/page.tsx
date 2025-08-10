@@ -106,7 +106,7 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (!savedConfig) return;
     if (savedConfig.enabled) {
-      runOnce();
+      // 주기 실행만 설정. 진입 시 즉시 실행하지 않음.
       timers.current = window.setInterval(() => runOnce(), Math.max(10_000, savedConfig.intervalMs));
     }
     return () => {
@@ -119,27 +119,26 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
   const formatMs = (ms: number) => `${ms} ms`;
 
   const stats = useMemo(() => {
-    if (logs.length === 0) return { avg: 0, min: 0, max: 0, uptime: 0 };
+    if (logs.length === 0) return { avg: 0, min: 0, max: 0 };
     const durations = logs.map((l) => l.durationMs);
     const avg = Math.round(durations.reduce((a, b) => a + b, 0) / durations.length);
     const min = Math.min(...durations);
     const max = Math.max(...durations);
-    const uptime = Math.round((logs.filter((l) => l.ok).length / logs.length) * 1000) / 10;
-    return { avg, min, max, uptime };
+    return { avg, min, max };
   }, [logs]);
 
   if (!draft) return <div style={{ padding: 20 }}>Loading...</div>;
 
   return (
-    <div className="container" style={{ padding: 16, color: "#e6e8eb", background: "#0b0d10", minHeight: "100vh" }}>
+    <div className="container" style={{ padding: 16, color: "#e6e8eb", background: "#0b0d10", minHeight: "100vh", overflowX: "hidden" }}>
       <a href="/" style={{ color: "#9aa4b2", textDecoration: "none" }}>← Monitors</a>
       <h2 style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 700 }}>{draft.name} <Badge>HTTP</Badge></h2>
       <div className="detail-grid">
-        <Card>
+        <Card className="card-narrow">
           <SectionTitle>설정</SectionTitle>
           {message && <div style={{ color: "#16a34a", marginBottom: 8 }}>{message}</div>}
           {error && <div style={{ color: "#ef4444", marginBottom: 8 }}>{error}</div>}
-          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8 }}>
+          <div className="form-grid">
             <Label>이름</Label>
             <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
             <Label>URL</Label>
@@ -161,9 +160,9 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
                 setDraft({ ...draft, formData: { ...draft.formData, [key]: "" } });
               }}>+ 필드</Btn>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+            <div className="form-data-grid">
               {Object.entries(draft.formData).map(([k, v]) => (
-                <div key={k} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6 }}>
+                <div key={k} className="form-data-row">
                   <Input
                     value={k}
                     onChange={(e) => {
@@ -171,36 +170,37 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
                       const { [k]: oldValue, ...rest } = draft.formData;
                       setDraft({ ...draft, formData: { ...rest, [newKey]: oldValue } });
                     }}
+                    placeholder="키"
                   />
                   <Input
                     value={v}
                     onChange={(e) => setDraft({ ...draft, formData: { ...draft.formData, [k]: e.target.value } })}
                     type={k.toLowerCase().includes("password") ? "password" : "text"}
+                    placeholder="값"
                   />
                   <Btn small variant="danger" onClick={() => { const { [k]: _omit, ...rest } = draft.formData; setDraft({ ...draft, formData: rest }); }}>삭제</Btn>
                 </div>
               ))}
             </div>
           </div>
-          <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="action-buttons">
             <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <input type="checkbox" checked={!!draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
               자동 실행(ON)
             </label>
-            <Btn onClick={() => runOnce()}>▶ 실행</Btn>
-            <div style={{ flex: 1 }} />
-            <Btn disabled={!hasChanges || saving} onClick={applySave}>저장</Btn>
-            <Btn disabled={!hasChanges || saving} onClick={revertChanges} variant="ghost">되돌리기</Btn>
-            <Btn style={{ marginLeft: 8 }} variant="danger" onClick={deleteTask} className="btn-fixed">삭제</Btn>
+            <div className="button-group">
+              <Btn onClick={() => runOnce()}>▶ 실행</Btn>
+              <Btn disabled={!hasChanges || saving} onClick={applySave}>저장</Btn>
+              <Btn variant="danger" onClick={deleteTask}>삭제</Btn>
+            </div>
           </div>
         </Card>
-        <Card>
+        <Card className="card-narrow">
           <SectionTitle>모니터링</SectionTitle>
-          <div style={{ display: "flex", gap: 12, marginBottom: 12, color: "#9aa4b2", fontSize: 12 }}>
+          <div className="stats-grid">
             <div>평균 {formatMs(stats.avg)}</div>
             <div>최소 {formatMs(stats.min)}</div>
             <div>최대 {formatMs(stats.max)}</div>
-            <div>가용성 {stats.uptime.toFixed(1)}%</div>
           </div>
           <div style={{ marginBottom: 8 }}>
             <Sparkline points={logs.map((l) => l.durationMs).slice(0, 30).reverse()} height={60} />
@@ -208,11 +208,12 @@ export default function MonitorDetail({ params }: { params: { id: string } }) {
           <div className="hide-scroll" style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 380, overflowY: "auto", overflowX: "hidden" }}>
             {logs.slice(0, 30).map((l, idx) => (
               <div key={l.startedAt + ":" + idx} style={{ border: "1px solid #2b3340", padding: 8, borderRadius: 6, fontSize: 12 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "2.0fr 1.0fr 0.8fr 1fr", gap: 6 }}>
-                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(l.startedAt).toLocaleString()}</div>
-                  <div>{formatMs(l.durationMs)}</div>
-                  <div>{l.ok ? `OK(${l.status})` : `FAIL(${l.status ?? "-"})`}</div>
-                  <div style={{ color: "#9aa4b2" }}>{l.error || ""}</div>
+                <div className="log-row">
+                  <div className="log-time">{new Date(l.startedAt).toLocaleString()}</div>
+                  <div className="log-duration">{formatMs(l.durationMs)}</div>
+                  <div>
+                    <Badge tone={l.ok ? "success" : "danger"}>{l.ok ? `OK(${l.status})` : `FAIL(${l.status ?? "-"})`}</Badge>
+                  </div>
                 </div>
               </div>
             ))}
