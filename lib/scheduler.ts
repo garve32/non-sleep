@@ -246,8 +246,10 @@ export async function initializeScheduler(): Promise<void> {
       // 기존 작업들을 모두 정리
       monitorScheduler.stopAllMonitors();
       
-      // 서버가 준비될 때까지 잠시 대기
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Vercel 환경에서는 더 짧은 대기 시간
+      const isVercel = process.env.VERCEL === '1';
+      const waitTime = isVercel ? 1000 : 2000;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
       
       // 직접 데이터베이스에서 설정 가져오기
       console.log('Fetching configs from database...');
